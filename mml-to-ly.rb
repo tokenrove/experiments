@@ -47,6 +47,7 @@ class Channel
   def initialize
     @text = ''
     @octave = 0
+    @clef = "bass_8"
     @stacatto = 8
     @previous_note = 'r'
     @loop_stack = []
@@ -54,6 +55,14 @@ class Channel
 
   def emit(text)
     @text += text
+  end
+
+  def opening(name)
+    "voice"+name+" = {\n"
+  end
+
+  def closing
+    "\n}\n\n"
   end
 
   def adjustment_to_suffix(adjustment)
@@ -104,10 +113,34 @@ class Channel
     @text = @loop_stack.pop + text
   end
 
-  attr_accessor :text, :octave, :stacatto, :previous_note
+  def change_octave(x)
+    @octave = x
+    case x
+    when 0 then clef = "bass_8"
+    when 1 then clef = "bass_8"
+    when 2 then clef = "bass"
+    when 3 then clef = "alto"
+    when 4 then clef = "treble"
+    when 5 then clef = "treble"
+    when 6 then clef = "treble^8"
+    when 7 then clef = "treble^8"
+    else clef = "treble^8"
+    end
+    if clef != @clef then
+      @clef = clef
+      emit("\n\\clef \""+@clef+"\"\n")
+    end
+    @octave
+  end
+
+  attr_accessor :text, :stacatto, :octave, :clef, :previous_note
 end
 
 class KickChannel < Channel
+  def opening(name)
+    "voice"+name+" = \\drummode {\n"
+  end
+
   def pitch_to_note_name(note, adjustment)
     $stderr.print $line_ctr.to_s+": bad kick note: "+pitch.to_s+"\n" if note != 'c'
     'bd'
@@ -115,6 +148,10 @@ class KickChannel < Channel
 end
 
 class NoiseChannel < Channel
+  def opening(name)
+    "voice"+name+" = \\drummode {\n"
+  end
+
   def pitch_to_note_name(note, adjustment)
     pitch = { 'c' => 0, 'd' => 2, 'e' => 4, 'f' => 5, 'g' => 7, 'a' => 9, 'b' => 11 }[note]
     pitch += adjustment
@@ -152,7 +189,7 @@ def inner_note_munging(channels, line)
     when 'o' then # octave
       octave = line.to_i
       line.sub!(/^\d+/,'')
-      channels.each { |n,c| c.octave = octave }
+      channels.each { |n,c| c.change_octave(octave) }
     when '>' # relative octave
       channels.each { |n,c| c.octave += 1 }
     when '<' # relative octave
@@ -199,10 +236,19 @@ def inner_note_munging(channels, line)
         c.previous_note = note
         c.emit(note+duration.gsub(/~/,'~'+note)+articulation+" ")
       end
+    when 'n' then # literal note value
+      note = 'noise('+line.to_i.to_s+')'
+      line.sub!(/^\d+,/,'')
+      duration = line.read_duration!
+      channels.each do |n,c|
+        c.previous_note = note
+        c.emit(note+duration.gsub(/~/,'~'+note)+' ')
+      end
     when '{' # tuplet
       channels.each { |n,c| c.emit "\n\\times 2/3 { " }
     when '}' # end tuplet
-      channels.each { |n,c| c.emit "} %{"+line.read_duration!+"%}\n " }
+      duration = line.read_duration!
+      channels.each { |n,c| c.emit "} %{"+duration+"%}\n " }
       line.sub!(/^\d+/,'')
     when '[' # loop
       channels.each { |n,c| c.start_a_new_loop }
@@ -241,4 +287,4 @@ file.each_line do |line|
   end
 end
 
-channels.each { |n,c| print "voice"+n+" = {\n"+c.text+"\n}\n\n" }
+channels.each { |n,c| print c.opening(n) + c.text + c.closing }
