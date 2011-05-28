@@ -1,14 +1,12 @@
 #!/usr/bin/wish8.5
 #
 # Potential enhancements:
-#  - store the histogram of responses separately from the logs;
-#    keeping the logs in plain text (maybe compressing them regularly)
-#    allows easier analysis later on, but it's going to get slow as
-#    the logs get large.
+#  - lock anything we're not writing in append mode
 
 #### CONFIGURABLE VARIABLES
 
-set mood_db "~/.mood_log"
+set mood_log "~/.mood_log.[clock format [clock seconds] -format "%Y-%m"]"
+set histogram_db "~/.mood_db"
 
 
 #### UTILITIES
@@ -19,58 +17,83 @@ proc map {lambda list} {	# Per http://wiki.tcl.tk/4884
     return $result
 }
 
+proc any {lambda list} {
+    foreach x $list { if [apply $lambda $x] {return 1} }
+    return 0
+}
+
 ####
 
-variable moods [dict create] intents [dict create] warned 0
+array set choices [list mood [dict create] intent [dict create]]
+variable mood {} intent {} warned 0
 
 proc vet_line ls {
     global warned
-    foreach v $ls {
-	if [string is space $v] {
-	    if {!$warned} {
-		puts "Warning: mood DB contains bad entries (starting with \"$ls\")"
-		set warned 1
-	    }
-	    return 1
+    if [any {v {string is space $v}} $ls] {
+	if {!$warned} {
+	    puts "Warning: mood DB contains bad entries (starting with \"$ls\")"
+	    set warned 1
 	}
+	return 1
     }
     return 0
 }
 
 ## XXX should lock file
-set fd [open $mood_db "r+"]
-while {![eof $fd]} {
-    set line [gets $fd]
-    if [string is space $line] { continue }
-    lassign [split $line "\t"] stamp mood intent
-    if [vet_line [list $stamp $mood $intent]] { continue }
-    dict incr moods $mood
-    dict incr intents $intent
+proc read_histogram {path} {
+    global choices
+    if { [catch {open $path r} fd] } { return }
+    while {![eof $fd]} {
+	set line [gets $fd]
+	if [string is space $line] { continue }
+	lassign [split $line "\t"] type value count
+	if [vet_line [list $type $value $count]] { continue }
+	dict set choices($type) $value $count
+    }
+    close $fd
 }
 
-foreach i {moods intents} {
-    set l {}
-    dict for {k v} [expr $$i] {lappend l [list $k $v]}
-    set "sorted_$i" [map {x {lindex $x 0}} [lsort -integer -index 1 -decreasing $l]]
+proc write_histogram {path} {
+    global choices
+    set fd [open $path "w"]
+    foreach d [array names choices] {
+	global $d
+	dict incr choices($d) [set $d]
+	dict for {k v} $choices($d) { puts $fd [join [list $d $k $v] "\t"] }
+    }
+    close $fd
 }
-variable mood "" intent ""
+
+
+read_histogram $histogram_db
+
+foreach d [array names choices] {
+    set l {}
+    dict for {k v} $choices($d) {lappend l [list $k $v]}
+    set sorted_choices($d) [map {x {lindex $x 0}} [lsort -integer -index 1 -decreasing $l]]
+}
 
 grid [ttk::label .error -text "" -foreground red]
 grid [ttk::labelframe .mood -text "You feel:"] -sticky news
 grid [ttk::labelframe .intent -text "You intend to:"] -sticky news
-pack [ttk::combobox .mood.box -values $sorted_moods -textvar mood] -side top -fill x
-pack [ttk::combobox .intent.box -values $sorted_intents -textvar intent] -side top -fill x
+foreach v [array names choices] {
+    pack [ttk::combobox .$v.box -values $sorted_choices($v) -textvar $v] -side top -fill x
+    bind .$v.box <Return> { .goforth invoke }
+}
 grid [ttk::button .goforth -text "Onwards" -command {
-    if {[string is space $mood] || [string is space $intent]} {
-	.error configure -text "Please fill in both values." -background black
+    if [any {x {string is space $x}} [list $mood $intent]] {
+	.error configure -text "Please fill in all values." -background black
 	return
     }
+
+    set fd [open $mood_log "a"]
     puts $fd [join [list [clock seconds] $mood $intent] "\t"]
     close $fd
+
+    write_histogram $histogram_db
     exit 0
 }]
-bind .mood.box <Return> { .goforth invoke }
-bind .intent.box <Return> { .goforth invoke }
+bind .goforth <Return> { .goforth invoke }
 focus .mood.box
 wm attributes . -topmost 1 -fullscreen 1
 wm deiconify .
