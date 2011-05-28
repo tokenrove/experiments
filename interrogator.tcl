@@ -72,3 +72,6 @@ grid [ttk::button .goforth -text "Onwards" -command {
 bind .mood.box <Return> { .goforth invoke }
 bind .intent.box <Return> { .goforth invoke }
 focus .mood.box
+wm attributes . -topmost 1 -fullscreen 1
+wm deiconify .
+bind . <Map> { grab -global . }
