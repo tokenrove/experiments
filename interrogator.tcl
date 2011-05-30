@@ -28,7 +28,7 @@ array set choices [list mood [dict create] intent [dict create]]
 variable mood {} intent {} warned 0
 
 proc vet_line ls {
-    global warned
+    variable warned
     if [any {v {string is space $v}} $ls] {
 	if {!$warned} {
 	    puts "Warning: mood DB contains bad entries (starting with \"$ls\")"
@@ -41,7 +41,7 @@ proc vet_line ls {
 
 ## XXX should lock file
 proc read_histogram {path} {
-    global choices
+    variable choices
     if { [catch {open $path r} fd] } { return }
     while {![eof $fd]} {
 	set line [gets $fd]
@@ -54,10 +54,10 @@ proc read_histogram {path} {
 }
 
 proc write_histogram {path} {
-    global choices
+    variable choices
     set fd [open $path "w"]
     foreach d [array names choices] {
-	global $d
+	variable $d
 	dict incr choices($d) [set $d]
 	dict for {k v} $choices($d) { puts $fd [join [list $d $k $v] "\t"] }
     }
