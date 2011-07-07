@@ -1,14 +1,16 @@
 use strict;
 
 my %moods = (
-    'pretty good' => 7,
+    'great' => 9,
     'good' => 8,
-    'not so great' => 4,
-    'okay' => 5,
+    'pretty good' => 7,
     'decent' => 6,
+    'okay' => 5,
+    'not so great' => 4,
+    'mediocre' => 4,
     'anxious' => 3,
-    'bad' => 1,
-    'not great' => 3
+    'not great' => 3,
+    'bad' => 1
 );
 
 for(<>) {
