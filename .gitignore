@@ -1,0 +1,6 @@
+*.fasl
+*.o
+*.cm[iox]
+*.so
+
+a.out

@@ -1,0 +1,16 @@
+(defun find-kth (A k)
+  (let ((l 0) (r (1- (array-dimension A 0))))
+    (loop while (< l r)
+          do (let ((x (aref A k))
+                   (i l) (j r))
+               (loop until (> i j)
+                     do
+                        (progn
+                          (loop while (< (aref A i) x) do (incf i))
+                          (loop while (< x (aref A j)) do (decf j))
+                          (when (<= i j)
+                            (rotatef (aref A i) (aref A j))
+                            (incf i) (decf j))))
+               (when (< j k) (setf l i))
+               (when (< k i) (setf r j))))
+    (aref A k)))
