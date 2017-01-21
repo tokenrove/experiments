@@ -1,4 +1,4 @@
-#!/usr/bin/wish8.5
+#!/usr/bin/env wish
 #
 # Potential enhancements:
 #  - lock anything we're not writing in append mode
