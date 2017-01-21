@@ -2,5 +2,6 @@
 *.o
 *.cm[iox]
 *.so
+*.beam
 
 a.out
