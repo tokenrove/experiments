@@ -1,0 +1,16 @@
+
+MEMORY {
+    ZEROPAGE: start = $0, size = $100;
+    STACK: start = $100, size = $100;
+    RAM: start = $200, size = 0600;
+    PRGROM: start = $8000, size = $8000, type = ro, file = "prgrom.bin", fill = yes;
+}
+
+SEGMENTS {
+    CODE: load = PRGROM, type = ro;
+    RODATA: load = PRGROM, type = ro;
+    VECTORS: load = PRGROM, type = ro, start = $FFFA;
+    ZEROPAGE: load = RAM, type = zp, define = yes;
+    DATA: load = RAM, type = rw;
+    BSS: load = RAM, type = bss, define = yes;
+}
