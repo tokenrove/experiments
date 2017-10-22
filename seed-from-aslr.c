@@ -26,7 +26,7 @@ static void init_seed(void)
                        ((code&((1UL<<22)-1))<<22));
     if (!seed) abort();
 }
-#elif defined(__openbsd__)  /* kudos phoebe; even better than ASLR */
+#elif defined(__OpenBSD__)  /* kudos phoebe; even better than ASLR */
 static uint32_t seed __attribute__((section(".openbsd.randomdata")));
 #else
 #error "Not implemented for your platform yet"
